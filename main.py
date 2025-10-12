@@ -2,10 +2,23 @@ from flask import Flask, request, send_file, render_template, redirect, url_for
 from PyPDF2 import PdfMerger, PdfReader, PdfWriter
 import tempfile
 import os
+import sys
 from werkzeug.utils import secure_filename
 from pathlib import Path
 
-app = Flask(__name__)
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+app = Flask(__name__, 
+            static_folder=resource_path('static'), 
+            template_folder=resource_path('templates'))
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200 MB limit (adjust)
 
 @app.route('/')
