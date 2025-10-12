@@ -1,5 +1,5 @@
 from flask import Flask, request, send_file, render_template, redirect, url_for
-from PyPDF2 import PdfMerger, PdfReader, PdfWriter
+from pypdf import PdfMerger, PdfReader, PdfWriter
 import tempfile
 import os
 import sys
