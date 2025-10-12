@@ -32,7 +32,7 @@ def merge():
         return "No files uploaded", 400
 
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as out_tmp:
-        merger = PdfMerger()
+        merger = PdfWriter()
         for f in files:
             # read file stream directly
             merger.append(f.stream)
