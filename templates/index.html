@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Tools</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>PDF Tools</h1>
+        
+        <h2>Merge PDFs</h2>
+        <form action="/merge" method="post" enctype="multipart/form-data">
+            <label for="merge-files" class="file-label">Select Files to Merge</label>
+            <input type="file" id="merge-files" name="files" multiple onchange="updateFileName('merge-files', 'merge-file-name')">
+            <div id="merge-file-name" class="file-name">No files selected</div>
+            <button type="submit">Merge</button>
+        </form>
+
+        <h2>Split PDF</h2>
+        <form action="/split" method="post" enctype="multipart/form-data">
+            <label for="split-file" class="file-label">Select File to Split</label>
+            <input type="file" id="split-file" name="file" onchange="updateFileName('split-file', 'split-file-name')">
+            <div id="split-file-name" class="file-name">No file selected</div>
+            <button type="submit">Split</button>
+        </form>
+    </div>
+
+    <script>
+        function updateFileName(inputId, outputId) {
+            const input = document.getElementById(inputId);
+            const output = document.getElementById(outputId);
+            if (input.files.length > 1) {
+                output.textContent = `${input.files.length} files selected`;
+            } else if (input.files.length > 0) {
+                output.textContent = input.files[0].name;
+            } else {
+                output.textContent = input.multiple ? 'No files selected' : 'No file selected';
+            }
+        }
+    </script>
+</body>
+</html>

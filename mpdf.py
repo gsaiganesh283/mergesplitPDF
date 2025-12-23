@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
-from PyPDF2 import PdfMerger
+from pypdf import PdfWriter
 
 
 def run_merger(parent=None):
@@ -41,7 +41,7 @@ def run_merger(parent=None):
             return
 
         try:
-            merger = PdfMerger()
+            merger = PdfWriter()
             for pdf in files:
                 merger.append(pdf)
             merger.write(output_path)
