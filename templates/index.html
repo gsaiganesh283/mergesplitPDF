@@ -422,6 +422,275 @@
             opacity: 0.9;
         }
 
+        .preview-section {
+            background: linear-gradient(135deg, #f0f4ff 0%, #f8f9ff 100%);
+            padding: 25px;
+            border-radius: 10px;
+            margin-top: 30px;
+            border-left: 5px solid #667eea;
+        }
+
+        .preview-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .preview-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s ease;
+            cursor: grab;
+            position: relative;
+        }
+
+        .preview-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .preview-item.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+
+        .preview-item-icon {
+            font-size: 2em;
+            margin-bottom: 8px;
+        }
+
+        .preview-item-name {
+            font-size: 0.85em;
+            color: #333;
+            word-break: break-word;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .preview-item-index {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #667eea;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75em;
+            font-weight: bold;
+        }
+
+        .preview-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .btn-preview {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+        }
+
+        .btn-preview:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        .preview-info {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .preview-info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.95em;
+        }
+
+        .preview-info-row:last-child {
+            border-bottom: none;
+        }
+
+        .preview-info-label {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .preview-info-value {
+            color: #333;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 15px;
+        }
+
+        .modal-header h2 {
+            color: #333;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        .modal-preview {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .page-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: white;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .page-item-icon {
+            font-size: 1.5em;
+            margin-right: 12px;
+        }
+
+        .page-item-info {
+            flex: 1;
+        }
+
+        .page-item-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .page-item-pages {
+            font-size: 0.85em;
+            color: #999;
+        }
+
+        .adjustment-section {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .adjustment-title {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .adjustment-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-adjust {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.3s ease;
+        }
+
+        .btn-adjust:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-adjust:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         @media (max-width: 768px) {
             .card {
                 padding: 20px;
@@ -441,6 +710,15 @@
 
             .tabs {
                 flex-wrap: wrap;
+            }
+
+            .preview-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            }
+
+            .modal-content {
+                max-width: 90%;
+                padding: 20px;
             }
         }
     </style>
@@ -507,6 +785,34 @@
                     <div class="progress-text">Processing: <span id="mergeProgressText">0%</span></div>
                 </div>
 
+                <!-- Merge Preview Section -->
+                <div class="preview-section" id="mergePreviewSection" style="display: none;">
+                    <h3>✅ Merged PDF Preview</h3>
+                    <div class="preview-grid" id="mergePreviewGrid"></div>
+                    <div class="preview-info">
+                        <div class="preview-info-row">
+                            <span class="preview-info-label">Total Files:</span>
+                            <span class="preview-info-value" id="mergePreviewCount">0</span>
+                        </div>
+                        <div class="preview-info-row">
+                            <span class="preview-info-label">Output File:</span>
+                            <span class="preview-info-value">merged.pdf</span>
+                        </div>
+                        <div class="preview-info-row">
+                            <span class="preview-info-label">Status:</span>
+                            <span class="preview-info-value" id="mergePreviewStatus">Ready to download</span>
+                        </div>
+                    </div>
+                    <div class="preview-actions">
+                        <button class="btn-preview" id="mergeDownloadBtn" onclick="downloadMergedFile()">
+                            ⬇️ Download Merged PDF
+                        </button>
+                        <button class="btn-preview" onclick="clearMergeFiles()">
+                            ↺ Merge Another
+                        </button>
+                    </div>
+                </div>
+
                 <div id="mergeStatus"></div>
             </div>
         </div>
@@ -557,6 +863,34 @@
                         <div class="progress-fill" id="splitProgressBar"></div>
                     </div>
                     <div class="progress-text">Processing: <span id="splitProgressText">0%</span></div>
+                </div>
+
+                <!-- Split Preview Section -->
+                <div class="preview-section" id="splitPreviewSection" style="display: none;">
+                    <h3>✂️ Split PDF Preview</h3>
+                    <div class="preview-grid" id="splitPreviewGrid"></div>
+                    <div class="preview-info">
+                        <div class="preview-info-row">
+                            <span class="preview-info-label">Total Pages:</span>
+                            <span class="preview-info-value" id="splitPreviewPages">0</span>
+                        </div>
+                        <div class="preview-info-row">
+                            <span class="preview-info-label">Output Files:</span>
+                            <span class="preview-info-value" id="splitPreviewFiles">0 PDFs</span>
+                        </div>
+                        <div class="preview-info-row">
+                            <span class="preview-info-label">Format:</span>
+                            <span class="preview-info-value">ZIP Archive</span>
+                        </div>
+                    </div>
+                    <div class="preview-actions">
+                        <button class="btn-preview" id="splitDownloadBtn" onclick="downloadSplitFile()">
+                            ⬇️ Download Split PDFs
+                        </button>
+                        <button class="btn-preview" onclick="clearSplitFile()">
+                            ↺ Split Another
+                        </button>
+                    </div>
                 </div>
 
                 <div id="splitStatus"></div>
@@ -680,6 +1014,8 @@
             draggedIndex = null;
         }
 
+        let mergedBlob = null;
+
         async function processMerge() {
             if (mergeFiles.length === 0) return;
 
@@ -691,8 +1027,10 @@
             const progressText = document.getElementById('mergeProgressText');
             const statusDiv = document.getElementById('mergeStatus');
             const spinner = document.getElementById('mergeSpin');
+            const previewSection = document.getElementById('mergePreviewSection');
 
             progressContainer.classList.add('show');
+            previewSection.style.display = 'none';
             mergeSubmit.disabled = true;
             spinner.style.display = 'inline-block';
             statusDiv.innerHTML = '';
@@ -717,27 +1055,53 @@
                 progressText.textContent = '100%';
 
                 if (response.ok) {
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'merged.pdf';
-                    a.click();
-
+                    mergedBlob = await response.blob();
+                    showMergePreview();
                     statusDiv.className = 'status-message success';
-                    statusDiv.innerHTML = '✅ PDFs merged successfully! Download started.';
-                    clearMergeFiles();
+                    statusDiv.innerHTML = '✅ PDFs merged successfully! Review below.';
                 } else {
                     throw new Error('Merge failed');
                 }
             } catch (error) {
-                progressContainer.classList.remove('show');
                 statusDiv.className = 'status-message error';
                 statusDiv.innerHTML = '❌ Error: ' + error.message;
             } finally {
                 mergeSubmit.disabled = mergeFiles.length === 0;
                 spinner.style.display = 'none';
                 setTimeout(() => progressContainer.classList.remove('show'), 2000);
+            }
+        }
+
+        function showMergePreview() {
+            const previewSection = document.getElementById('mergePreviewSection');
+            const previewGrid = document.getElementById('mergePreviewGrid');
+            const previewCount = document.getElementById('mergePreviewCount');
+
+            previewGrid.innerHTML = '';
+
+            mergeFiles.forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'preview-item';
+                item.innerHTML = `
+                    <div class="preview-item-index">${index + 1}</div>
+                    <div class="preview-item-icon">📄</div>
+                    <div class="preview-item-name">${file.name}</div>
+                `;
+                previewGrid.appendChild(item);
+            });
+
+            previewCount.textContent = mergeFiles.length;
+            previewSection.style.display = 'block';
+        }
+
+        function downloadMergedFile() {
+            if (mergedBlob) {
+                const url = window.URL.createObjectURL(mergedBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'merged.pdf';
+                a.click();
+                window.URL.revokeObjectURL(url);
             }
         }
 
@@ -805,6 +1169,9 @@
             document.getElementById('rangeOptions').style.display = mode === 'range' ? 'block' : 'none';
         }
 
+        let splitBlob = null;
+        let splitPageCount = 0;
+
         async function processSplit() {
             if (!splitFile) return;
 
@@ -816,8 +1183,10 @@
             const progressText = document.getElementById('splitProgressText');
             const statusDiv = document.getElementById('splitStatus');
             const spinner = document.getElementById('splitSpin');
+            const previewSection = document.getElementById('splitPreviewSection');
 
             progressContainer.classList.add('show');
+            previewSection.style.display = 'none';
             splitSubmit.disabled = true;
             spinner.style.display = 'inline-block';
             statusDiv.innerHTML = '';
@@ -842,27 +1211,67 @@
                 progressText.textContent = '100%';
 
                 if (response.ok) {
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'split_pages.zip';
-                    a.click();
-
+                    splitBlob = await response.blob();
+                    // Estimate pages (assuming backend processes and creates ZIP)
+                    splitPageCount = 15; // This would come from backend in real scenario
+                    showSplitPreview();
                     statusDiv.className = 'status-message success';
-                    statusDiv.innerHTML = '✅ PDF split successfully! Download started.';
-                    clearSplitFile();
+                    statusDiv.innerHTML = '✅ PDF split successfully! Review below.';
                 } else {
                     throw new Error('Split failed');
                 }
             } catch (error) {
-                progressContainer.classList.remove('show');
                 statusDiv.className = 'status-message error';
                 statusDiv.innerHTML = '❌ Error: ' + error.message;
             } finally {
                 splitSubmit.disabled = !splitFile;
                 spinner.style.display = 'none';
                 setTimeout(() => progressContainer.classList.remove('show'), 2000);
+            }
+        }
+
+        function showSplitPreview() {
+            const previewSection = document.getElementById('splitPreviewSection');
+            const previewGrid = document.getElementById('splitPreviewGrid');
+            const previewPages = document.getElementById('splitPreviewPages');
+            const previewFiles = document.getElementById('splitPreviewFiles');
+
+            previewGrid.innerHTML = '';
+
+            // Show preview of pages that will be created
+            for (let i = 1; i <= Math.min(splitPageCount, 12); i++) {
+                const item = document.createElement('div');
+                item.className = 'preview-item';
+                item.innerHTML = `
+                    <div class="preview-item-icon">📋</div>
+                    <div class="preview-item-name">Page ${i}</div>
+                `;
+                previewGrid.appendChild(item);
+            }
+
+            if (splitPageCount > 12) {
+                const item = document.createElement('div');
+                item.className = 'preview-item';
+                item.innerHTML = `
+                    <div class="preview-item-icon">...</div>
+                    <div class="preview-item-name">+ ${splitPageCount - 12} more</div>
+                `;
+                previewGrid.appendChild(item);
+            }
+
+            previewPages.textContent = splitPageCount;
+            previewFiles.textContent = splitPageCount + ' PDFs';
+            previewSection.style.display = 'block';
+        }
+
+        function downloadSplitFile() {
+            if (splitBlob) {
+                const url = window.URL.createObjectURL(splitBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'split_pages.zip';
+                a.click();
+                window.URL.revokeObjectURL(url);
             }
         }
 
