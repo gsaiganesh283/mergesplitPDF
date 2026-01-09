@@ -343,6 +343,42 @@
             cursor: grabbing;
         }
 
+        .merge-preview-item-preview {
+            width: 80px;
+            height: 110px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .merge-preview-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .preview-loading {
+            font-size: 12px;
+            text-align: center;
+            color: #999;
+            padding: 8px;
+        }
+
+        .merge-preview-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-pages {
+            font-size: 0.85em;
+            color: #999;
+            margin-top: 4px;
+        }
+
         .feature-badge {
             display: inline-block;
             background: #667eea;
@@ -465,6 +501,43 @@
         .preview-item.dragging {
             opacity: 0.5;
             cursor: grabbing;
+        }
+
+        .preview-item-with-image {
+            display: flex;
+            flex-direction: column;
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .preview-item-with-image:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .preview-item-image-container {
+            width: 100%;
+            height: 160px;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .preview-item-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .preview-item-details {
+            padding: 12px;
+            text-align: center;
         }
 
         .preview-item-icon {
@@ -1366,16 +1439,24 @@
                 const orderItem = document.createElement('div');
                 orderItem.className = 'merge-preview-item';
                 orderItem.draggable = true;
+                orderItem.id = `merge-order-${index}`;
                 orderItem.innerHTML = `
                     <div class="merge-preview-item-drag">☰</div>
-                    <div class="file-item-info">
+                    <div class="merge-preview-item-preview" id="preview-${index}">
+                        <div class="preview-loading">📄 Loading preview...</div>
+                    </div>
+                    <div class="merge-preview-item-info">
                         <div class="file-name">${index + 1}. ${file.name}</div>
+                        <div class="file-pages" id="pages-${index}">...</div>
                     </div>
                 `;
                 orderItem.addEventListener('dragstart', (e) => dragStart(e, index));
                 orderItem.addEventListener('dragover', dragOver);
                 orderItem.addEventListener('drop', (e) => drop(e, index));
                 mergeOrder.appendChild(orderItem);
+
+                // Load preview image for this file
+                loadMergeFilePreview(file, index);
             });
 
             document.getElementById('filesCount').textContent = mergeFiles.length;
@@ -1385,6 +1466,31 @@
             mergeClear.style.display = mergeFiles.length > 0 ? 'block' : 'none';
             document.getElementById('mergeSelectPages').style.display = mergeFiles.length > 0 ? 'block' : 'none';
             mergePreview.style.display = mergeFiles.length > 0 ? 'block' : 'none';
+        }
+
+        function loadMergeFilePreview(file, index) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/getPagePreviews', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.previews.length > 0) {
+                    const previewContainer = document.getElementById(`preview-${index}`);
+                    const firstPageImage = data.previews[0].image;
+                    previewContainer.innerHTML = `<img src="${firstPageImage}" alt="Page 1" class="merge-preview-image">`;
+                    
+                    const pagesElement = document.getElementById(`pages-${index}`);
+                    pagesElement.textContent = `${data.pageCount} page(s)`;
+                }
+            })
+            .catch(error => {
+                const previewContainer = document.getElementById(`preview-${index}`);
+                previewContainer.innerHTML = `<div class="preview-loading">❌ Failed</div>`;
+            });
         }
 
         let draggedIndex = null;
@@ -1472,17 +1578,46 @@
 
             mergeFiles.forEach((file, index) => {
                 const item = document.createElement('div');
-                item.className = 'preview-item';
+                item.className = 'preview-item-with-image';
                 item.innerHTML = `
-                    <div class="preview-item-index">${index + 1}</div>
-                    <div class="preview-item-icon">📄</div>
-                    <div class="preview-item-name">${file.name}</div>
+                    <div class="preview-item-image-container" id="merge-preview-img-${index}">
+                        <div class="preview-loading">📄 Loading...</div>
+                    </div>
+                    <div class="preview-item-details">
+                        <div class="preview-item-index">${index + 1}</div>
+                        <div class="preview-item-name">${file.name}</div>
+                    </div>
                 `;
                 previewGrid.appendChild(item);
+
+                // Load preview image
+                loadMergePreviewImage(file, index);
             });
 
             previewCount.textContent = mergeFiles.length;
             previewSection.style.display = 'block';
+        }
+
+        function loadMergePreviewImage(file, index) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/getPagePreviews', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.previews.length > 0) {
+                    const container = document.getElementById(`merge-preview-img-${index}`);
+                    const image = data.previews[0].image;
+                    container.innerHTML = `<img src="${image}" alt="Page 1" class="preview-item-image">`;
+                }
+            })
+            .catch(error => {
+                const container = document.getElementById(`merge-preview-img-${index}`);
+                container.innerHTML = `<div class="preview-loading">❌ Error</div>`;
+            });
         }
 
         function downloadMergedFile() {
@@ -1630,29 +1765,37 @@
 
             previewGrid.innerHTML = '';
 
-            // Show preview of pages that will be created
-            for (let i = 1; i <= Math.min(splitPageCount, 12); i++) {
+            // Show previews of pages that were split
+            const pagesToShow = Math.min(splitPagePreviews.length, 12);
+            for (let i = 0; i < pagesToShow; i++) {
+                const preview = splitPagePreviews[i];
                 const item = document.createElement('div');
-                item.className = 'preview-item';
+                item.className = 'preview-item-with-image';
                 item.innerHTML = `
-                    <div class="preview-item-icon">📋</div>
-                    <div class="preview-item-name">Page ${i}</div>
+                    <div class="preview-item-image-container">
+                        <img src="${preview.image}" alt="Page ${preview.page}" class="preview-item-image">
+                    </div>
+                    <div class="preview-item-details">
+                        <div class="preview-item-name">Page ${preview.page}</div>
+                    </div>
                 `;
                 previewGrid.appendChild(item);
             }
 
-            if (splitPageCount > 12) {
+            if (splitPagePreviews.length > 12) {
                 const item = document.createElement('div');
                 item.className = 'preview-item';
                 item.innerHTML = `
-                    <div class="preview-item-icon">...</div>
-                    <div class="preview-item-name">+ ${splitPageCount - 12} more</div>
+                    <div class="preview-item-details">
+                        <div class="preview-item-icon">...</div>
+                        <div class="preview-item-name">+ ${splitPagePreviews.length - 12} more pages</div>
+                    </div>
                 `;
                 previewGrid.appendChild(item);
             }
 
-            previewPages.textContent = splitPageCount;
-            previewFiles.textContent = splitPageCount + ' PDFs';
+            previewPages.textContent = splitPagePreviews.length;
+            previewFiles.textContent = splitPagePreviews.length + ' PDFs';
             previewSection.style.display = 'block';
         }
 

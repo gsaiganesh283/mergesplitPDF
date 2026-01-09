@@ -57,6 +57,46 @@ def get_page_previews():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
+@app.route('/getMergePagePreviews', methods=['POST'])
+def get_merge_page_previews():
+    """Generate preview thumbnails for each file in merge operation"""
+    files = request.files.getlist('files')
+    if not files:
+        return jsonify({"error": "No files uploaded"}), 400
+
+    try:
+        file_previews = []
+        
+        for file_idx, f in enumerate(files):
+            pdf_bytes = f.read()
+            reader = PdfReader(BytesIO(pdf_bytes))
+            page_count = len(reader.pages)
+            
+            # Get first page as preview
+            if page_count > 0:
+                images = convert_from_bytes(pdf_bytes, first_page=1, last_page=1, dpi=100)
+                image = images[0]
+                image.thumbnail((150, 200), image.Resampling.LANCZOS)
+                
+                img_buffer = BytesIO()
+                image.save(img_buffer, format='JPEG', quality=70)
+                img_buffer.seek(0)
+                img_base64 = base64.b64encode(img_buffer.getvalue()).decode('utf-8')
+                
+                file_previews.append({
+                    'fileIndex': file_idx,
+                    'fileName': f.filename,
+                    'pageCount': page_count,
+                    'firstPageImage': f'data:image/jpeg;base64,{img_base64}'
+                })
+        
+        return jsonify({
+            'success': True,
+            'files': file_previews
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
 @app.route('/merge', methods=['POST'])
 def merge():
     files = request.files.getlist('files')
