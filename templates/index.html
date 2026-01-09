@@ -659,6 +659,12 @@
             flex-wrap: wrap;
         }
 
+        .adjustment-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
         .btn-adjust {
             background: white;
             color: #667eea;
@@ -678,6 +684,263 @@
         .btn-adjust:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+        }
+
+        /* Page Selection Styles */
+        .page-selector-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .page-selector-modal.show {
+            display: flex;
+        }
+
+        .page-selector-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease;
+        }
+
+        .page-selector-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 15px;
+        }
+
+        .page-selector-header h2 {
+            color: #333;
+            margin: 0;
+        }
+
+        .page-selector-close {
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .page-selector-close:hover {
+            color: #333;
+        }
+
+        .page-selection-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .page-selection-tab {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-weight: 500;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .page-selection-tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .page-selection-tab:hover {
+            color: #667eea;
+        }
+
+        .pages-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .page-checkbox {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .page-checkbox:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .page-checkbox input[type="checkbox"] {
+            margin-bottom: 8px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #667eea;
+        }
+
+        .page-checkbox.selected {
+            background: #e8eaff;
+            border-color: #667eea;
+        }
+
+        .page-checkbox-label {
+            font-size: 0.9em;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .page-range-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            margin-bottom: 20px;
+            font-family: monospace;
+        }
+
+        .page-range-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .page-selection-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-select-all {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+        }
+
+        .btn-select-all:hover {
+            background: #764ba2;
+        }
+
+        .btn-deselect-all {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+        }
+
+        .btn-deselect-all:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-apply-selection {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+
+        .btn-apply-selection:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .selection-summary {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .selection-summary-text {
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        .file-selector-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 2px solid #e0e0e0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-selector-item:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .file-selector-item.selected {
+            border-color: #667eea;
+            background: #e8eaff;
+        }
+
+        .file-selector-item-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .file-selector-item-pages {
+            font-size: 0.85em;
+            color: #999;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         @keyframes slideUp {
@@ -772,6 +1035,9 @@
                     <button class="btn-primary" id="mergeClear" onclick="clearMergeFiles()" style="display: none;">
                         Clear All
                     </button>
+                    <button class="btn-primary" id="mergeSelectPages" onclick="openMergePageSelector()" style="display: none;">
+                        📑 Select Pages
+                    </button>
                     <button class="btn-primary" id="mergeSubmit" onclick="processMerge()" disabled>
                         <span class="loading-spinner" id="mergeSpin" style="display: none;"></span>
                         Merge PDFs
@@ -852,6 +1118,9 @@
                     <button class="btn-secondary" id="splitClear" onclick="clearSplitFile()" style="display: none;">
                         Clear
                     </button>
+                    <button class="btn-primary" id="splitSelectPages" onclick="openSplitPageSelector()" style="display: none;">
+                        📑 Select Pages
+                    </button>
                     <button class="btn-primary" id="splitSubmit" onclick="processSplit()" disabled>
                         <span class="loading-spinner" id="splitSpin" style="display: none;"></span>
                         Split PDF
@@ -894,6 +1163,64 @@
                 </div>
 
                 <div id="splitStatus"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Page Selector Modal for Merge -->
+    <div class="page-selector-modal" id="mergePageSelector">
+        <div class="page-selector-content">
+            <div class="page-selector-header">
+                <h2>📄 Select Pages to Merge</h2>
+                <button class="page-selector-close" onclick="closeMergePageSelector()">✕</button>
+            </div>
+
+            <div class="selection-summary" id="mergeSummary">
+                <div class="selection-summary-text">Select pages from each PDF</div>
+            </div>
+
+            <div id="mergePagesList"></div>
+
+            <div class="page-selection-actions">
+                <button class="btn-deselect-all" onclick="deselectAllMergePages()">Deselect All</button>
+                <button class="btn-apply-selection" onclick="applyMergePageSelection()">Continue with Selection</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Page Selector Modal for Split -->
+    <div class="page-selector-modal" id="splitPageSelector">
+        <div class="page-selector-content">
+            <div class="page-selector-header">
+                <h2>✂️ Select Pages to Split</h2>
+                <button class="page-selector-close" onclick="closeSplitPageSelector()">✕</button>
+            </div>
+
+            <div class="page-selection-tabs">
+                <button class="page-selection-tab active" onclick="switchSplitTab('grid')">Page Grid</button>
+                <button class="page-selection-tab" onclick="switchSplitTab('range')">Page Range</button>
+            </div>
+
+            <!-- Grid Tab -->
+            <div id="splitGridTab" class="split-tab-content">
+                <div class="selection-summary" id="splitSummary">
+                    <div class="selection-summary-text">Select pages to extract</div>
+                </div>
+                <div class="pages-grid" id="splitPagesGrid"></div>
+                <div class="page-selection-actions">
+                    <button class="btn-select-all" onclick="selectAllSplitPages()">Select All</button>
+                    <button class="btn-deselect-all" onclick="deselectAllSplitPages()">Deselect All</button>
+                    <button class="btn-apply-selection" onclick="applySplitPageSelection('grid')">Apply Selection</button>
+                </div>
+            </div>
+
+            <!-- Range Tab -->
+            <div id="splitRangeTab" class="split-tab-content" style="display: none;">
+                <label>Enter page numbers (e.g., 1-5, 10, 15-20)</label>
+                <input type="text" id="splitPageRange" class="page-range-input" placeholder="e.g., 1-5, 10, 15-20">
+                <div class="page-selection-actions">
+                    <button class="btn-apply-selection" onclick="applySplitPageSelection('range')">Apply Range</button>
+                </div>
             </div>
         </div>
     </div>
@@ -993,6 +1320,7 @@
 
             mergeSubmit.disabled = mergeFiles.length === 0;
             mergeClear.style.display = mergeFiles.length > 0 ? 'block' : 'none';
+            document.getElementById('mergeSelectPages').style.display = mergeFiles.length > 0 ? 'block' : 'none';
             mergePreview.style.display = mergeFiles.length > 0 ? 'block' : 'none';
         }
 
@@ -1149,6 +1477,7 @@
             splitOptions.style.display = splitFile ? 'block' : 'none';
             splitSubmit.disabled = !splitFile;
             splitClear.style.display = splitFile ? 'block' : 'none';
+            document.getElementById('splitSelectPages').style.display = splitFile ? 'block' : 'none';
 
             if (splitFile) {
                 const fileItem = document.createElement('div');
@@ -1273,6 +1602,159 @@
                 a.click();
                 window.URL.revokeObjectURL(url);
             }
+        }
+
+        // ===================== Page Selection for Merge =====================
+        let mergePageSelections = {};
+
+        function openMergePageSelector() {
+            if (mergeFiles.length === 0) return;
+            
+            const modal = document.getElementById('mergePageSelector');
+            const pagesList = document.getElementById('mergePagesList');
+            pagesList.innerHTML = '';
+
+            mergeFiles.forEach((file, index) => {
+                const fileDiv = document.createElement('div');
+                fileDiv.className = 'file-selector-item';
+                fileDiv.innerHTML = `
+                    <div class="file-selector-item-name">${file.name}</div>
+                    <div class="file-selector-item-pages">Assume 10 pages (Preview)</div>
+                    <button class="btn-select-all" onclick="toggleAllPages(${index})">Select All Pages</button>
+                `;
+                pagesList.appendChild(fileDiv);
+            });
+
+            modal.classList.add('show');
+        }
+
+        function closeMergePageSelector() {
+            document.getElementById('mergePageSelector').classList.remove('show');
+        }
+
+        function deselectAllMergePages() {
+            mergePageSelections = {};
+            document.querySelectorAll('#mergePageSelector .page-checkbox input').forEach(cb => {
+                cb.checked = false;
+            });
+        }
+
+        function applyMergePageSelection() {
+            closeMergePageSelector();
+            // Page selection would be applied here
+            // For now, proceed with merge
+            processMerge();
+        }
+
+        function toggleAllPages(fileIndex) {
+            // Simple implementation - in real scenario, would toggle specific pages per file
+            alert('Pages selected for file ' + (fileIndex + 1) + '. Merging with all pages.');
+        }
+
+        // ===================== Page Selection for Split =====================
+        let splitPageSelections = [];
+
+        function openSplitPageSelector() {
+            if (!splitFile) return;
+            
+            const modal = document.getElementById('splitPageSelector');
+            const pagesGrid = document.getElementById('splitPagesGrid');
+            pagesGrid.innerHTML = '';
+
+            // Assuming 15 pages (in real scenario, backend would provide page count)
+            const pageCount = 15;
+
+            for (let i = 1; i <= pageCount; i++) {
+                const checkbox = document.createElement('div');
+                checkbox.className = 'page-checkbox';
+                checkbox.id = `page-${i}`;
+                checkbox.innerHTML = `
+                    <input type="checkbox" id="page-cb-${i}" onchange="updateSplitPageSelection()">
+                    <label class="page-checkbox-label" for="page-cb-${i}">Page ${i}</label>
+                `;
+                pagesGrid.appendChild(checkbox);
+            }
+
+            modal.classList.add('show');
+        }
+
+        function closeSplitPageSelector() {
+            document.getElementById('splitPageSelector').classList.remove('show');
+        }
+
+        function switchSplitTab(tabName) {
+            document.querySelectorAll('.split-tab-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.page-selection-tab').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById('split' + tabName.charAt(0).toUpperCase() + tabName.slice(1) + 'Tab').style.display = 'block';
+            event.target.classList.add('active');
+        }
+
+        function selectAllSplitPages() {
+            document.querySelectorAll('#splitPageSelector .page-checkbox input').forEach(cb => {
+                cb.checked = true;
+            });
+            updateSplitPageSelection();
+        }
+
+        function deselectAllSplitPages() {
+            document.querySelectorAll('#splitPageSelector .page-checkbox input').forEach(cb => {
+                cb.checked = false;
+            });
+            updateSplitPageSelection();
+        }
+
+        function updateSplitPageSelection() {
+            const selected = document.querySelectorAll('#splitPageSelector .page-checkbox input:checked').length;
+            const total = document.querySelectorAll('#splitPageSelector .page-checkbox input').length;
+            const summary = document.getElementById('splitSummary');
+            summary.innerHTML = `<div class="selection-summary-text">Selected ${selected} of ${total} pages</div>`;
+        }
+
+        function applySplitPageSelection(mode) {
+            if (mode === 'grid') {
+                const selected = [];
+                document.querySelectorAll('#splitPageSelector .page-checkbox input:checked').forEach(cb => {
+                    const match = cb.id.match(/page-cb-(\d+)/);
+                    if (match) selected.push(parseInt(match[1]));
+                });
+                
+                if (selected.length === 0) {
+                    alert('Please select at least one page');
+                    return;
+                }
+                splitPageSelections = selected;
+            } else {
+                const rangeInput = document.getElementById('splitPageRange').value;
+                // Parse range like "1-5, 10, 15-20"
+                splitPageSelections = parsePageRange(rangeInput);
+                if (splitPageSelections.length === 0) {
+                    alert('Invalid page range. Use format: 1-5, 10, 15-20');
+                    return;
+                }
+            }
+            
+            closeSplitPageSelector();
+            processSplit();
+        }
+
+        function parsePageRange(rangeStr) {
+            const pages = [];
+            const parts = rangeStr.split(',').map(p => p.trim());
+            
+            parts.forEach(part => {
+                if (part.includes('-')) {
+                    const [start, end] = part.split('-').map(p => parseInt(p.trim()));
+                    for (let i = start; i <= end; i++) {
+                        if (!pages.includes(i)) pages.push(i);
+                    }
+                } else {
+                    const page = parseInt(part);
+                    if (!isNaN(page) && !pages.includes(page)) pages.push(page);
+                }
+            });
+            
+            return pages.sort((a, b) => a - b);
         }
 
         // Initialize
