@@ -1,9 +1,12 @@
-from flask import Flask, request, send_file, render_template, redirect, url_for
+from flask import Flask, request, send_file, render_template, redirect, url_for, jsonify
 from PyPDF2 import PdfMerger, PdfReader, PdfWriter
 import tempfile
 import os
 from werkzeug.utils import secure_filename
 from pathlib import Path
+from pdf2image import convert_from_bytes
+import base64
+from io import BytesIO
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200 MB limit (adjust)
@@ -11,6 +14,48 @@ app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200 MB limit (adjust)
 @app.route('/')
 def index():
     return render_template('index.html')  # optional simple form
+
+@app.route('/getPagePreviews', methods=['POST'])
+def get_page_previews():
+    """Generate thumbnail previews for all pages in a PDF"""
+    f = request.files.get('file')
+    if not f:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    try:
+        # Read PDF and get page count
+        pdf_bytes = f.read()
+        reader = PdfReader(BytesIO(pdf_bytes))
+        page_count = len(reader.pages)
+        
+        # Convert PDF pages to images (limit to first 50 pages for performance)
+        max_pages = min(page_count, 50)
+        images = convert_from_bytes(pdf_bytes, first_page=1, last_page=max_pages, dpi=100)
+        
+        # Convert images to base64
+        previews = []
+        for i, image in enumerate(images, start=1):
+            # Resize image for faster loading
+            image.thumbnail((200, 280), image.Resampling.LANCZOS)
+            
+            # Convert to base64
+            img_buffer = BytesIO()
+            image.save(img_buffer, format='JPEG', quality=70)
+            img_buffer.seek(0)
+            img_base64 = base64.b64encode(img_buffer.getvalue()).decode('utf-8')
+            
+            previews.append({
+                'page': i,
+                'image': f'data:image/jpeg;base64,{img_base64}'
+            })
+        
+        return jsonify({
+            'success': True,
+            'pageCount': page_count,
+            'previews': previews
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
 @app.route('/merge', methods=['POST'])
 def merge():
