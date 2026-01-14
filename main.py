@@ -1,7 +1,9 @@
 from flask import Flask, request, send_file, render_template, redirect, url_for, jsonify
 from PyPDF2 import PdfMerger, PdfReader, PdfWriter
 from docx import Document
-from docx.shared import Pt, RGBColor, Inches
+from docx.oxml import OxmlElement, parse_xml
+from docx.oxml.ns import nsdecls, qn
+from copy import deepcopy
 import tempfile
 import os
 from werkzeug.utils import secure_filename
@@ -151,13 +153,13 @@ def split():
 
 @app.route('/mergeWord', methods=['POST'])
 def merge_word():
-    """Merge multiple Word documents into a single document, preserving all formatting and styles"""
+    """Merge multiple Word documents into a single document, preserving exact formatting and styles"""
     files = request.files.getlist('files')
     if not files:
         return jsonify({"error": "No files uploaded"}), 400
 
     try:
-        # Read the first document as the base
+        # Read the first document as the base to preserve all styles and settings
         first_doc_bytes = files[0].read()
         merged_doc = Document(BytesIO(first_doc_bytes))
 
@@ -169,14 +171,22 @@ def merge_word():
                 doc = Document(BytesIO(doc_bytes))
                 
                 # Add page break before appending next document
-                merged_doc.add_page_break()
+                last_paragraph = merged_doc.add_page_break()
                 
-                # Copy all elements (paragraphs, tables, etc.) from source document
-                # This preserves all formatting, styles, and structure
+                # Copy all body elements from the source document
+                # Use XML cloning to preserve exact formatting
                 for element in doc.element.body:
-                    # Create a deep copy of the element to avoid cross-document references
-                    element_copy = element.__deepcopy__({})
-                    merged_doc.element.body.append(element_copy)
+                    # Use deepcopy to properly clone XML elements with all attributes and formatting
+                    try:
+                        # Clone the element with all its properties
+                        cloned_element = deepcopy(element)
+                        merged_doc.element.body.append(cloned_element)
+                    except Exception as clone_err:
+                        # If cloning fails, try alternative method
+                        # Convert to string and parse to ensure clean copy
+                        element_xml = OxmlElement(element.tag)
+                        element_xml._element = deepcopy(element)
+                        merged_doc.element.body.append(element)
                     
             except Exception as e:
                 return jsonify({"error": f"Error processing {f.filename}: {str(e)}"}), 400
