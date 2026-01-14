@@ -151,43 +151,32 @@ def split():
 
 @app.route('/mergeWord', methods=['POST'])
 def merge_word():
-    """Merge multiple Word documents into a single document"""
+    """Merge multiple Word documents into a single document, preserving all formatting and styles"""
     files = request.files.getlist('files')
     if not files:
         return jsonify({"error": "No files uploaded"}), 400
 
     try:
-        # Create a new Document object
-        merged_doc = Document()
+        # Read the first document as the base
+        first_doc_bytes = files[0].read()
+        merged_doc = Document(BytesIO(first_doc_bytes))
 
-        for file_idx, f in enumerate(files):
+        # Append remaining documents
+        for file_idx, f in enumerate(files[1:], start=1):
             try:
                 # Read the Word document
-                doc = Document(f.stream)
+                doc_bytes = f.read()
+                doc = Document(BytesIO(doc_bytes))
                 
-                # Copy paragraphs with formatting
-                for paragraph in doc.paragraphs:
-                    # Add paragraph with text and style
-                    new_para = merged_doc.add_paragraph()
-                    new_para.style = paragraph.style
-                    
-                    # Copy runs (text segments) to preserve formatting
-                    for run in paragraph.runs:
-                        new_run = new_para.add_run(run.text)
-                        new_run.bold = run.bold
-                        new_run.italic = run.italic
-                        new_run.underline = run.underline
+                # Add page break before appending next document
+                merged_doc.add_page_break()
                 
-                # Copy tables
-                for table in doc.tables:
-                    new_table = merged_doc.add_table(rows=len(table.rows), cols=len(table.columns))
-                    for i, row in enumerate(table.rows):
-                        for j, cell in enumerate(row.cells):
-                            new_table.rows[i].cells[j].text = cell.text
-                
-                # Add page break between documents (except after last one)
-                if file_idx < len(files) - 1:
-                    merged_doc.add_page_break()
+                # Copy all elements (paragraphs, tables, etc.) from source document
+                # This preserves all formatting, styles, and structure
+                for element in doc.element.body:
+                    # Create a deep copy of the element to avoid cross-document references
+                    element_copy = element.__deepcopy__({})
+                    merged_doc.element.body.append(element_copy)
                     
             except Exception as e:
                 return jsonify({"error": f"Error processing {f.filename}: {str(e)}"}), 400
