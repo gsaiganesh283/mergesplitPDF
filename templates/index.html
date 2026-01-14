@@ -877,6 +877,7 @@
             cursor: pointer;
             transition: all 0.3s ease;
             padding: 0;
+            position: relative;
         }
 
         .page-preview-item:hover {
@@ -890,11 +891,49 @@
             background: #e8eaff;
         }
 
+        .page-preview-item.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+
+        .page-preview-item.drag-over {
+            border: 2px dashed #667eea;
+            background: #f0f2ff;
+        }
+
+        .page-preview-drag-handle {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: grab;
+            font-size: 12px;
+            z-index: 10;
+            transition: all 0.2s ease;
+        }
+
+        .page-preview-item:hover .page-preview-drag-handle {
+            background: rgba(102, 126, 234, 1);
+            transform: scale(1.1);
+        }
+
+        .page-preview-item.dragging .page-preview-drag-handle {
+            cursor: grabbing;
+        }
+
         .page-preview-image {
             width: 100%;
             height: 180px;
             object-fit: cover;
             background: #f0f0f0;
+            position: relative;
         }
 
         .page-preview-label {
@@ -1861,6 +1900,10 @@
         let splitPageSelections = [];
         let splitPagePreviews = [];
 
+        // Split drag-and-drop variables
+        let splitDraggedItem = null;
+        let splitDraggedIndex = null;
+
         function openSplitPageSelector() {
             if (!splitFile) return;
             
@@ -1889,12 +1932,14 @@
                 splitPagePreviews = data.previews;
                 pagesGrid.innerHTML = '';
 
-                // Create preview items with images
-                data.previews.forEach((preview) => {
+                // Create preview items with images and drag support
+                data.previews.forEach((preview, index) => {
                     const item = document.createElement('div');
                     item.className = 'page-preview-item';
                     item.id = `page-preview-${preview.page}`;
+                    item.draggable = true;
                     item.innerHTML = `
+                        <div class="page-preview-drag-handle">☰</div>
                         <img src="${preview.image}" alt="Page ${preview.page}" class="page-preview-image">
                         <div class="page-preview-label">
                             <span>Page ${preview.page}</span>
@@ -1902,8 +1947,16 @@
                         </div>
                     `;
                     
+                    // Drag events
+                    item.addEventListener('dragstart', (e) => splitPageDragStart(e, index));
+                    item.addEventListener('dragover', splitPageDragOver);
+                    item.addEventListener('drop', (e) => splitPageDrop(e, index));
+                    item.addEventListener('dragend', splitPageDragEnd);
+                    item.addEventListener('dragenter', (e) => splitPageDragEnter(e));
+                    item.addEventListener('dragleave', (e) => splitPageDragLeave(e));
+                    
                     item.addEventListener('click', (e) => {
-                        if (e.target.tagName !== 'INPUT') {
+                        if (e.target.tagName !== 'INPUT' && e.target.className !== 'page-preview-drag-handle') {
                             const checkbox = item.querySelector('input[type="checkbox"]');
                             checkbox.checked = !checkbox.checked;
                             updateSplitPageSelection();
@@ -1913,13 +1966,75 @@
                     pagesGrid.appendChild(item);
                 });
 
-                summary.innerHTML = `<div class="selection-summary-text">Select pages to extract (${data.pageCount} total)</div>`;
+                summary.innerHTML = `<div class="selection-summary-text">Select pages to extract (${data.pageCount} total) | Drag to reorder</div>`;
             })
             .catch(error => {
                 pagesGrid.innerHTML = `<div style="text-align: center; padding: 20px; color: #d32f2f;">Error: ${error.message}</div>`;
             });
 
             modal.classList.add('show');
+        }
+
+        function splitPageDragStart(e, index) {
+            splitDraggedItem = e.target.closest('.page-preview-item');
+            splitDraggedIndex = index;
+            e.dataTransfer.effectAllowed = 'move';
+            splitDraggedItem.classList.add('dragging');
+        }
+
+        function splitPageDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        }
+
+        function splitPageDragEnter(e) {
+            const item = e.target.closest('.page-preview-item');
+            if (item && item !== splitDraggedItem) {
+                item.classList.add('drag-over');
+            }
+        }
+
+        function splitPageDragLeave(e) {
+            const item = e.target.closest('.page-preview-item');
+            if (item) {
+                item.classList.remove('drag-over');
+            }
+        }
+
+        function splitPageDrop(e, index) {
+            e.preventDefault();
+            const dropItem = e.target.closest('.page-preview-item');
+            if (dropItem && dropItem !== splitDraggedItem) {
+                dropItem.classList.remove('drag-over');
+                
+                // Reorder items
+                const grid = document.getElementById('splitPagesGrid');
+                const items = Array.from(grid.children);
+                const draggedElement = items[splitDraggedIndex];
+                const dropIndex = items.indexOf(dropItem);
+                
+                if (dropIndex < splitDraggedIndex) {
+                    dropItem.parentNode.insertBefore(draggedElement, dropItem);
+                } else {
+                    dropItem.parentNode.insertBefore(draggedElement, dropItem.nextSibling);
+                }
+                
+                // Update preview array order
+                const newPreviews = Array.from(grid.querySelectorAll('.page-preview-item')).map(item => {
+                    const pageNum = parseInt(item.querySelector('.page-preview-checkbox').id.replace('page-cb-', ''));
+                    return splitPagePreviews.find(p => p.page === pageNum);
+                });
+                splitPagePreviews = newPreviews;
+            }
+        }
+
+        function splitPageDragEnd(e) {
+            if (splitDraggedItem) {
+                splitDraggedItem.classList.remove('dragging');
+                document.querySelectorAll('.page-preview-item').forEach(item => {
+                    item.classList.remove('drag-over');
+                });
+            }
         }
 
         function closeSplitPageSelector() {
