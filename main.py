@@ -1,5 +1,7 @@
 from flask import Flask, request, send_file, render_template, redirect, url_for, jsonify
 from PyPDF2 import PdfMerger, PdfReader, PdfWriter
+from docx import Document
+from docx.shared import Pt, RGBColor, Inches
 import tempfile
 import os
 from werkzeug.utils import secure_filename
@@ -146,6 +148,90 @@ def split():
             pass
 
     return send_file(zip_path, as_attachment=True, download_name="pages.zip")
+
+@app.route('/mergeWord', methods=['POST'])
+def merge_word():
+    """Merge multiple Word documents into a single document"""
+    files = request.files.getlist('files')
+    if not files:
+        return jsonify({"error": "No files uploaded"}), 400
+
+    try:
+        # Create a new Document object
+        merged_doc = Document()
+
+        for file_idx, f in enumerate(files):
+            if file_idx > 0:
+                # Add a page break between documents
+                merged_doc.add_page_break()
+            
+            try:
+                # Read the Word document
+                doc = Document(f.stream)
+                
+                # Merge all paragraphs and elements
+                for element in doc.element.body:
+                    merged_doc.element.body.append(element)
+                    
+            except Exception as e:
+                return jsonify({"error": f"Error processing {f.filename}: {str(e)}"}), 400
+
+        # Save the merged document to a temporary file
+        with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as out_tmp:
+            merged_doc.save(out_tmp.name)
+            out_tmp.close()
+            return send_file(out_tmp.name, as_attachment=True, download_name="merged.docx")
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route('/getMergeWordPagePreviews', methods=['POST'])
+def get_merge_word_page_previews():
+    """Generate preview info for each Word document in merge operation"""
+    files = request.files.getlist('files')
+    if not files:
+        return jsonify({"error": "No files uploaded"}), 400
+
+    try:
+        file_previews = []
+        
+        for file_idx, f in enumerate(files):
+            try:
+                doc = Document(f.stream)
+                
+                # Extract preview text (first 100 characters or first few lines)
+                preview_text = ""
+                char_count = 0
+                max_chars = 100
+                
+                for paragraph in doc.paragraphs:
+                    if char_count >= max_chars:
+                        break
+                    para_text = paragraph.text
+                    if para_text:
+                        preview_text += para_text + " "
+                        char_count += len(para_text)
+                
+                # Count paragraphs and tables
+                paragraph_count = len(doc.paragraphs)
+                table_count = len(doc.tables)
+                
+                file_previews.append({
+                    'fileIndex': file_idx,
+                    'fileName': f.filename,
+                    'paragraphs': paragraph_count,
+                    'tables': table_count,
+                    'preview': preview_text.strip()[:100] + ("..." if len(preview_text) > 100 else "")
+                })
+            except Exception as e:
+                return jsonify({"error": f"Error reading {f.filename}: {str(e)}"}), 400
+        
+        return jsonify({
+            'success': True,
+            'files': file_previews
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)

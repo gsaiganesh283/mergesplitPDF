@@ -1183,12 +1183,15 @@
             <button class="tab-button active" onclick="switchTab('merge')">
                 ⚙️ Merge PDFs
             </button>
+            <button class="tab-button" onclick="switchTab('mergeWord')">
+                📄 Merge Word
+            </button>
             <button class="tab-button" onclick="switchTab('split')">
                 ✂️ Split PDF
             </button>
         </div>
 
-        <!-- Merge Tab -->
+        <!-- Merge PDF Tab -->
         <div id="merge" class="tab-content active">
             <div class="card">
                 <h2>Merge Multiple PDFs <span class="feature-badge">Drag & Drop</span></h2>
@@ -1255,6 +1258,72 @@
                 </div>
 
                 <div id="mergeStatus"></div>
+            </div>
+        </div>
+
+        <!-- Merge Word Tab -->
+        <div id="mergeWord" class="tab-content">
+            <div class="card">
+                <h2>Merge Multiple Word Documents <span class="feature-badge">Drag & Drop</span></h2>
+                <div class="upload-area" id="mergeWordDropZone">
+                    <div class="upload-icon">📄</div>
+                    <h3>Drop Word files here</h3>
+                    <p>or click to browse (select multiple .docx files)</p>
+                    <input type="file" id="mergeWordInput" accept=".docx" multiple>
+                </div>
+
+                <div class="file-list" id="mergeWordFileList"></div>
+
+                <div class="merge-preview" id="mergeWordPreview" style="display: none;">
+                    <h3>📋 Merge Order (Drag to reorder)</h3>
+                    <div id="mergeWordOrder"></div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn-primary" id="mergeWordClear" onclick="clearMergeWordFiles()" style="display: none;">
+                        Clear All
+                    </button>
+                    <button class="btn-primary" id="mergeWordSubmit" onclick="processMergeWord()" disabled>
+                        <span class="loading-spinner" id="mergeWordSpin" style="display: none;"></span>
+                        Merge Documents
+                    </button>
+                </div>
+
+                <div class="progress-container" id="mergeWordProgress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="mergeWordProgressBar"></div>
+                    </div>
+                    <div class="progress-text">Processing: <span id="mergeWordProgressText">0%</span></div>
+                </div>
+
+                <!-- Merge Word Preview Section -->
+                <div class="preview-section" id="mergeWordPreviewSection" style="display: none;">
+                    <h3>✅ Merged Document Preview</h3>
+                    <div class="preview-info">
+                        <div class="preview-info-row">
+                            <span class="preview-info-label">Total Files:</span>
+                            <span class="preview-info-value" id="mergeWordPreviewCount">0</span>
+                        </div>
+                        <div class="preview-info-row">
+                            <span class="preview-info-label">Output File:</span>
+                            <span class="preview-info-value">merged.docx</span>
+                        </div>
+                        <div class="preview-info-row">
+                            <span class="preview-info-label">Status:</span>
+                            <span class="preview-info-value" id="mergeWordPreviewStatus">Ready to download</span>
+                        </div>
+                    </div>
+                    <div class="preview-actions">
+                        <button class="btn-preview" id="mergeWordDownloadBtn" onclick="downloadMergedWordFile()">
+                            ⬇️ Download Merged Document
+                        </button>
+                        <button class="btn-preview" onclick="clearMergeWordFiles()">
+                            ↺ Merge Another
+                        </button>
+                    </div>
+                </div>
+
+                <div id="mergeWordStatus"></div>
             </div>
         </div>
 
@@ -2133,9 +2202,207 @@
             return pages.sort((a, b) => a - b);
         }
 
-        // Initialize
-        updateMergeUI();
-        updateSplitUI();
-    </script>
-</body>
+        // ===================== Word Merge Functionality =====================
+        const mergeWordInput = document.getElementById('mergeWordInput');
+        const mergeWordDropZone = document.getElementById('mergeWordDropZone');
+        const mergeWordFileList = document.getElementById('mergeWordFileList');
+        const mergeWordPreview = document.getElementById('mergeWordPreview');
+        const mergeWordSubmit = document.getElementById('mergeWordSubmit');
+        const mergeWordClear = document.getElementById('mergeWordClear');
+        let mergeWordFiles = [];
+        let mergedWordBlob = null;
+
+        // Drag and drop for Word merge
+        mergeWordDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            mergeWordDropZone.classList.add('active');
+        });
+
+        mergeWordDropZone.addEventListener('dragleave', () => {
+            mergeWordDropZone.classList.remove('active');
+        });
+
+        mergeWordDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            mergeWordDropZone.classList.remove('active');
+            handleMergeWordFiles(e.dataTransfer.files);
+        });
+
+        mergeWordInput.addEventListener('change', (e) => {
+            handleMergeWordFiles(e.target.files);
+        });
+
+        function handleMergeWordFiles(files) {
+            mergeWordFiles = Array.from(files).filter(f => f.name.endsWith('.docx'));
+            
+            if (mergeWordFiles.length === 0) {
+                alert('Please select valid Word documents (.docx files)');
+                return;
+            }
+
+            updateMergeWordUI();
+        }
+
+        function updateMergeWordUI() {
+            mergeWordFileList.innerHTML = '';
+            mergeWordPreview.style.display = mergeWordFiles.length > 0 ? 'block' : 'none';
+
+            mergeWordFiles.forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'file-item';
+                item.draggable = true;
+                item.id = `mergeWord-file-${index}`;
+                item.innerHTML = `
+                    <span>${file.name}</span>
+                    <button onclick="removeMergeWordFile(${index})" class="remove-btn">✕</button>
+                `;
+                mergeWordFileList.appendChild(item);
+
+                item.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.effectAllowed = 'move';
+                    item.classList.add('dragging');
+                });
+
+                item.addEventListener('dragend', () => {
+                    item.classList.remove('dragging');
+                });
+
+                item.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    const dragging = document.querySelector('.file-item.dragging');
+                    if (dragging && item !== dragging) {
+                        const rect = item.getBoundingClientRect();
+                        const middle = rect.top + rect.height / 2;
+                        if (e.clientY < middle) {
+                            item.parentNode.insertBefore(dragging, item);
+                        } else {
+                            item.parentNode.insertBefore(dragging, item.nextSibling);
+                        }
+                        reorderMergeWordFiles();
+                    }
+                });
+            });
+
+            // Update order
+            const order = document.getElementById('mergeWordOrder');
+            order.innerHTML = '';
+            mergeWordFiles.forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'merge-preview-item';
+                item.innerHTML = `
+                    <div class="merge-preview-item-info">
+                        <span class="merge-preview-item-number">${index + 1}</span>
+                        <div>
+                            <div class="merge-preview-item-title">${file.name}</div>
+                            <div class="merge-preview-item-subtitle">Word Document</div>
+                        </div>
+                    </div>
+                `;
+                order.appendChild(item);
+            });
+
+            mergeWordClear.style.display = mergeWordFiles.length > 0 ? 'block' : 'none';
+            mergeWordSubmit.disabled = mergeWordFiles.length === 0;
+        }
+
+        function removeMergeWordFile(index) {
+            mergeWordFiles.splice(index, 1);
+            updateMergeWordUI();
+        }
+
+        function clearMergeWordFiles() {
+            mergeWordFiles = [];
+            mergeWordInput.value = '';
+            updateMergeWordUI();
+            document.getElementById('mergeWordPreviewSection').style.display = 'none';
+            mergedWordBlob = null;
+        }
+
+        function reorderMergeWordFiles() {
+            const items = document.querySelectorAll('#mergeWordFileList .file-item');
+            const newFiles = [];
+            items.forEach(item => {
+                const id = item.id;
+                const index = parseInt(id.split('-')[2]);
+                newFiles.push(mergeWordFiles[index]);
+            });
+            mergeWordFiles = newFiles;
+            updateMergeWordUI();
+        }
+
+        async function processMergeWord() {
+            if (mergeWordFiles.length === 0) return;
+
+            const formData = new FormData();
+            mergeWordFiles.forEach(file => formData.append('files', file));
+
+            const progressContainer = document.getElementById('mergeWordProgress');
+            const progressBar = document.getElementById('mergeWordProgressBar');
+            const progressText = document.getElementById('mergeWordProgressText');
+            const statusDiv = document.getElementById('mergeWordStatus');
+            const spinner = document.getElementById('mergeWordSpin');
+            const previewSection = document.getElementById('mergeWordPreviewSection');
+
+            progressContainer.classList.add('show');
+            previewSection.style.display = 'none';
+            mergeWordSubmit.disabled = true;
+            spinner.style.display = 'inline-block';
+            statusDiv.innerHTML = '';
+
+            try {
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    if (progress < 90) {
+                        progress += Math.random() * 30;
+                        progressBar.style.width = progress + '%';
+                        progressText.textContent = Math.floor(progress) + '%';
+                    }
+                }, 300);
+
+                const response = await fetch('/mergeWord', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                clearInterval(progressInterval);
+                progressBar.style.width = '100%';
+                progressText.textContent = '100%';
+
+                if (response.ok) {
+                    mergedWordBlob = await response.blob();
+                    showMergeWordPreview();
+                    statusDiv.className = 'status-message success';
+                    statusDiv.innerHTML = '✅ Documents merged successfully! Review below.';
+                } else {
+                    throw new Error('Merge failed');
+                }
+            } catch (error) {
+                statusDiv.className = 'status-message error';
+                statusDiv.innerHTML = '❌ Error: ' + error.message;
+            } finally {
+                mergeWordSubmit.disabled = mergeWordFiles.length === 0;
+                spinner.style.display = 'none';
+                setTimeout(() => progressContainer.classList.remove('show'), 2000);
+            }
+        }
+
+        function showMergeWordPreview() {
+            const previewSection = document.getElementById('mergeWordPreviewSection');
+            const previewCount = document.getElementById('mergeWordPreviewCount');
+
+            previewCount.textContent = mergeWordFiles.length;
+            previewSection.style.display = 'block';
+        }
+
+        function downloadMergedWordFile() {
+            if (mergedWordBlob) {
+                const url = window.URL.createObjectURL(mergedWordBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'merged.docx';
+                a.click();
+                window.URL.revokeObjectURL(url);
+            }
+        }
+
 </html>
