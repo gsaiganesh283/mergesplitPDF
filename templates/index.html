@@ -2223,6 +2223,9 @@
         let mergeWordFiles = [];
         let mergedWordBlob = null;
 
+        // Click to open file picker
+        mergeWordDropZone.addEventListener('click', () => mergeWordInput.click());
+
         // Drag and drop for Word merge
         mergeWordDropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
