@@ -187,6 +187,9 @@ def merge_word():
                         element_xml = OxmlElement(element.tag)
                         element_xml._element = deepcopy(element)
                         merged_doc.element.body.append(element)
+                
+                # Add page break after each merged document
+                merged_doc.add_page_break()
                     
             except Exception as e:
                 return jsonify({"error": f"Error processing {f.filename}: {str(e)}"}), 400
