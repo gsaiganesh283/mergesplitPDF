@@ -1650,24 +1650,38 @@
             const formData = new FormData();
             formData.append('file', file);
 
+            const previewContainer = document.getElementById(`preview-${index}`);
+            previewContainer.innerHTML = `<div class="preview-loading">⏳ Loading...</div>`;
+
             fetch('/getPagePreviews', {
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Preview failed');
+                }
+                return response.json();
+            })
             .then(data => {
-                if (data.success && data.previews.length > 0) {
-                    const previewContainer = document.getElementById(`preview-${index}`);
-                    const firstPageImage = data.previews[0].image;
-                    previewContainer.innerHTML = `<img src="${firstPageImage}" alt="Page 1" class="merge-preview-image">`;
+                if (data.success && data.previews && data.previews.length > 0) {
+                    previewContainer.innerHTML = `<img src="${data.previews[0].image}" alt="Page 1" class="merge-preview-image">`;
                     
                     const pagesElement = document.getElementById(`pages-${index}`);
                     pagesElement.textContent = `${data.pageCount} page(s)`;
+                } else {
+                    // Preview not available but file is valid
+                    previewContainer.innerHTML = `<div class="preview-loading" style="background: #f0f4ff;">📄 Ready</div>`;
+                    const pagesElement = document.getElementById(`pages-${index}`);
+                    if (data.pageCount) {
+                        pagesElement.textContent = `${data.pageCount} page(s)`;
+                    }
                 }
             })
             .catch(error => {
-                const previewContainer = document.getElementById(`preview-${index}`);
-                previewContainer.innerHTML = `<div class="preview-loading">❌ Failed</div>`;
+                // Preview failed but file can still be merged
+                previewContainer.innerHTML = `<div class="preview-loading" style="background: #fff8e1; color: #f57c00;">📄 No preview</div>`;
+                console.log('Preview failed for file:', file.name, error);
             });
         }
 
@@ -1730,12 +1744,24 @@
                 progressText.textContent = '100%';
 
                 if (response.ok) {
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        // Error returned as JSON
+                        const data = await response.json();
+                        throw new Error(data.error || 'Merge failed');
+                    }
                     mergedBlob = await response.blob();
                     showMergePreview();
                     statusDiv.className = 'status-message success';
                     statusDiv.innerHTML = '✅ PDFs merged successfully! Review below.';
                 } else {
-                    throw new Error('Merge failed');
+                    // Try to get error message from response
+                    try {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Merge failed');
+                    } catch {
+                        throw new Error('Merge failed - server error');
+                    }
                 }
             } catch (error) {
                 statusDiv.className = 'status-message error';

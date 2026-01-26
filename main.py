@@ -86,26 +86,45 @@ def get_merge_page_previews():
         file_previews = []
         
         for file_idx, f in enumerate(files):
-            pdf_bytes = f.read()
-            reader = PdfReader(BytesIO(pdf_bytes))
-            page_count = len(reader.pages)
-            
-            # Get first page as preview
-            if page_count > 0:
-                images = convert_from_bytes(pdf_bytes, first_page=1, last_page=1, dpi=100)
-                image = images[0]
-                image.thumbnail((150, 200), image.Resampling.LANCZOS)
+            try:
+                pdf_bytes = f.read()
+                reader = PdfReader(BytesIO(pdf_bytes))
+                page_count = len(reader.pages)
                 
-                img_buffer = BytesIO()
-                image.save(img_buffer, format='JPEG', quality=70)
-                img_buffer.seek(0)
-                img_base64 = base64.b64encode(img_buffer.getvalue()).decode('utf-8')
+                # Try to get first page as preview (may fail for large files)
+                preview_image = None
+                try:
+                    if page_count > 0:
+                        # Limit memory usage for preview
+                        images = convert_from_bytes(pdf_bytes, first_page=1, last_page=1, dpi=72, size=(150, None))
+                        image = images[0]
+                        image.thumbnail((150, 200), image.Resampling.LANCZOS)
+                        
+                        img_buffer = BytesIO()
+                        image.save(img_buffer, format='JPEG', quality=60)
+                        img_buffer.seek(0)
+                        img_base64 = base64.b64encode(img_buffer.getvalue()).decode('utf-8')
+                        preview_image = f'data:image/jpeg;base64,{img_base64}'
+                except Exception:
+                    # Preview failed, but we can still merge
+                    preview_image = None
                 
                 file_previews.append({
                     'fileIndex': file_idx,
                     'fileName': f.filename,
                     'pageCount': page_count,
-                    'firstPageImage': f'data:image/jpeg;base64,{img_base64}'
+                    'firstPageImage': preview_image,
+                    'previewFailed': preview_image is None
+                })
+            except Exception as e:
+                # Even if one file fails to read, include it with error info
+                file_previews.append({
+                    'fileIndex': file_idx,
+                    'fileName': f.filename,
+                    'pageCount': 0,
+                    'firstPageImage': None,
+                    'previewFailed': True,
+                    'error': str(e)
                 })
         
         return jsonify({
@@ -119,17 +138,20 @@ def get_merge_page_previews():
 def merge():
     files = request.files.getlist('files')
     if not files:
-        return "No files uploaded", 400
+        return jsonify({"error": "No files uploaded"}), 400
 
-    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as out_tmp:
-        merger = PdfMerger()
-        for f in files:
-            # read file stream directly
-            merger.append(f.stream)
-        merger.write(out_tmp.name)
-        merger.close()
-        out_tmp.close()
-        return send_file(out_tmp.name, as_attachment=True, download_name="merged.pdf")
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as out_tmp:
+            merger = PdfMerger()
+            for f in files:
+                # read file stream directly
+                merger.append(f.stream)
+            merger.write(out_tmp.name)
+            merger.close()
+            out_tmp.close()
+            return send_file(out_tmp.name, as_attachment=True, download_name="merged.pdf")
+    except Exception as e:
+        return jsonify({"error": f"Merge failed: {str(e)}"}), 400
 
 @app.route('/split', methods=['POST'])
 def split():
