@@ -140,17 +140,48 @@ def merge():
     if not files:
         return jsonify({"error": "No files uploaded"}), 400
 
+    temp_files = []
+    out_path = None
     try:
-        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as out_tmp:
-            merger = PdfMerger()
-            for f in files:
-                # read file stream directly
-                merger.append(f.stream)
-            merger.write(out_tmp.name)
-            merger.close()
-            out_tmp.close()
-            return send_file(out_tmp.name, as_attachment=True, download_name="merged.pdf")
+        # Save each file to disk first to handle large files better
+        for f in files:
+            temp_file = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+            temp_files.append(temp_file.name)
+            f.save(temp_file.name)
+            temp_file.close()
+        
+        # Create output file
+        out_tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+        out_path = out_tmp.name
+        out_tmp.close()
+        
+        # Merge from disk files (more memory efficient)
+        merger = PdfMerger()
+        for temp_path in temp_files:
+            merger.append(temp_path)
+        merger.write(out_path)
+        merger.close()
+        
+        # Clean up input temp files
+        for temp_path in temp_files:
+            try:
+                os.remove(temp_path)
+            except:
+                pass
+        
+        return send_file(out_path, as_attachment=True, download_name="merged.pdf")
     except Exception as e:
+        # Clean up on error
+        for temp_path in temp_files:
+            try:
+                os.remove(temp_path)
+            except:
+                pass
+        if out_path:
+            try:
+                os.remove(out_path)
+            except:
+                pass
         return jsonify({"error": f"Merge failed: {str(e)}"}), 400
 
 @app.route('/split', methods=['POST'])
