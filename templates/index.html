@@ -1728,17 +1728,23 @@
                 let progress = 0;
                 const progressInterval = setInterval(() => {
                     if (progress < 90) {
-                        progress += Math.random() * 30;
+                        progress += Math.random() * 10;
                         progressBar.style.width = progress + '%';
                         progressText.textContent = Math.floor(progress) + '%';
                     }
-                }, 300);
+                }, 500);
+
+                // Use AbortController for timeout (5 minutes for large files)
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 300000);
 
                 const response = await fetch('/merge', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    signal: controller.signal
                 });
 
+                clearTimeout(timeoutId);
                 clearInterval(progressInterval);
                 progressBar.style.width = '100%';
                 progressText.textContent = '100%';
@@ -1756,16 +1762,29 @@
                     statusDiv.innerHTML = '✅ PDFs merged successfully! Review below.';
                 } else {
                     // Try to get error message from response
+                    const responseText = await response.text();
                     try {
-                        const errorData = await response.json();
+                        const errorData = JSON.parse(responseText);
                         throw new Error(errorData.error || 'Merge failed');
                     } catch {
-                        throw new Error('Merge failed - server error');
+                        // Server returned HTML error page
+                        if (response.status === 502 || response.status === 503 || response.status === 504) {
+                            throw new Error('Server timeout - files may be too large. Try smaller files or fewer files at once.');
+                        } else if (response.status === 413) {
+                            throw new Error('Files too large - maximum total size is 500MB');
+                        } else {
+                            throw new Error(`Server error (${response.status}) - try again or use smaller files`);
+                        }
                     }
                 }
             } catch (error) {
+                clearInterval(progressInterval);
+                if (error.name === 'AbortError') {
+                    statusDiv.innerHTML = '❌ Error: Request timed out - files may be too large for this server';
+                } else {
+                    statusDiv.innerHTML = '❌ Error: ' + error.message;
+                }
                 statusDiv.className = 'status-message error';
-                statusDiv.innerHTML = '❌ Error: ' + error.message;
             } finally {
                 mergeSubmit.disabled = mergeFiles.length === 0;
                 spinner.style.display = 'none';
