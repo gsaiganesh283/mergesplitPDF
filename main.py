@@ -11,9 +11,23 @@ from pathlib import Path
 from pdf2image import convert_from_bytes
 import base64
 from io import BytesIO
+from image_crop import ImageCropper, crop_uploaded_images
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200 MB limit (adjust)
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500 MB limit for multiple images
+
+# Error handlers to return JSON instead of HTML
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    return jsonify({"error": "File(s) too large. Maximum total upload size is 500 MB."}), 413
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    return jsonify({"error": "Internal server error. Please try with fewer or smaller images."}), 500
+
+@app.errorhandler(400)
+def bad_request(error):
+    return jsonify({"error": "Bad request. Please check your input."}), 400
 
 @app.route('/')
 def index():
@@ -248,6 +262,223 @@ def get_merge_word_page_previews():
             'success': True,
             'files': file_previews
         })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route('/cropImages', methods=['POST'])
+def crop_images():
+    """Upload multiple images and get them cropped and zipped"""
+    files = request.files.getlist('files')
+    if not files:
+        return jsonify({"error": "No files uploaded"}), 400
+
+    try:
+        # Validate that files are images
+        valid_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff'}
+        for f in files:
+            ext = Path(f.filename).suffix.lower()
+            if ext not in valid_extensions:
+                return jsonify({"error": f"Invalid file format: {f.filename}. Supported: {', '.join(valid_extensions)}"}), 400
+        
+        # Process images
+        zip_bytes, filename = crop_uploaded_images(files)
+        
+        # Return ZIP file
+        return send_file(
+            BytesIO(zip_bytes),
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=filename
+        )
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route('/getCropImagePreviews', methods=['POST'])
+def get_crop_image_previews():
+    """Generate previews for images with auto-crop detection - shows BEFORE and AFTER"""
+    try:
+        files = request.files.getlist('files')
+        
+        # Filter out empty files
+        files = [f for f in files if f and f.filename]
+        
+        if not files:
+            return jsonify({"error": "No files uploaded"}), 400
+
+        from PIL import Image as PILImage
+        
+        file_previews = []
+        cropper = ImageCropper(auto_detect=True, margin=5)
+        
+        for file_idx, f in enumerate(files):
+            try:
+                # Read image
+                img_bytes = f.read()
+                original_image = PILImage.open(BytesIO(img_bytes))
+                
+                # Get original image info
+                orig_width, orig_height = original_image.size
+                
+                # Auto-detect crop bounds
+                x, y, w, h = cropper.detect_content_bounds(original_image.copy())
+                
+                # Convert numpy int64 to Python int for JSON serialization
+                x, y, w, h = int(x), int(y), int(w), int(h)
+                
+                # Crop the image
+                crop_area = (x, y, x + w, y + h)
+                cropped_image = original_image.crop(crop_area)
+                cropped_width, cropped_height = cropped_image.size
+                
+                # Create original thumbnail preview
+                orig_thumb = original_image.copy()
+                orig_thumb.thumbnail((200, 200), PILImage.Resampling.LANCZOS)
+                orig_buffer = BytesIO()
+                if orig_thumb.mode in ('RGBA', 'LA', 'P'):
+                    orig_thumb = orig_thumb.convert('RGB')
+                orig_thumb.save(orig_buffer, format='JPEG', quality=70)
+                orig_buffer.seek(0)
+                orig_base64 = base64.b64encode(orig_buffer.getvalue()).decode('utf-8')
+                
+                # Create cropped thumbnail preview
+                cropped_thumb = cropped_image.copy()
+                cropped_thumb.thumbnail((200, 200), PILImage.Resampling.LANCZOS)
+                cropped_buffer = BytesIO()
+                if cropped_thumb.mode in ('RGBA', 'LA', 'P'):
+                    cropped_thumb = cropped_thumb.convert('RGB')
+                cropped_thumb.save(cropped_buffer, format='JPEG', quality=70)
+                cropped_buffer.seek(0)
+                cropped_base64 = base64.b64encode(cropped_buffer.getvalue()).decode('utf-8')
+                
+                file_previews.append({
+                    'fileIndex': file_idx,
+                    'fileName': f.filename,
+                    'originalWidth': int(orig_width),
+                    'originalHeight': int(orig_height),
+                    'croppedWidth': int(cropped_width),
+                    'croppedHeight': int(cropped_height),
+                    'cropBounds': {'x': x, 'y': y, 'w': w, 'h': h},
+                    'originalPreview': f'data:image/jpeg;base64,{orig_base64}',
+                    'croppedPreview': f'data:image/jpeg;base64,{cropped_base64}'
+                })
+            except Exception as e:
+                return jsonify({"error": f"Error reading {f.filename}: {str(e)}"}), 400
+        
+        return jsonify({
+            'success': True,
+            'files': file_previews
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route('/cropSingleImage', methods=['POST'])
+def crop_single_image():
+    """Crop a single image and return it for download"""
+    file = request.files.get('file')
+    if not file:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    try:
+        from PIL import Image as PILImage
+        
+        # Read image
+        img_bytes = file.read()
+        original_image = PILImage.open(BytesIO(img_bytes))
+        
+        # Auto-detect crop bounds
+        cropper = ImageCropper(auto_detect=True, margin=2)
+        x, y, w, h = cropper.detect_content_bounds(original_image.copy())
+        
+        # Crop the image
+        crop_area = (x, y, x + w, y + h)
+        cropped_image = original_image.crop(crop_area)
+        
+        # Convert to RGB if needed for JPEG
+        if cropped_image.mode in ('RGBA', 'LA', 'P'):
+            background = PILImage.new('RGB', cropped_image.size, (255, 255, 255))
+            if cropped_image.mode == 'RGBA':
+                background.paste(cropped_image, mask=cropped_image.split()[-1])
+            else:
+                background.paste(cropped_image)
+            cropped_image = background
+        elif cropped_image.mode != 'RGB':
+            cropped_image = cropped_image.convert('RGB')
+        
+        # Save to buffer
+        img_buffer = BytesIO()
+        
+        # Determine format from filename
+        ext = Path(file.filename).suffix.lower()
+        if ext in ['.png']:
+            cropped_image.save(img_buffer, format='PNG')
+            mimetype = 'image/png'
+        else:
+            cropped_image.save(img_buffer, format='JPEG', quality=95)
+            mimetype = 'image/jpeg'
+        
+        img_buffer.seek(0)
+        
+        # Generate output filename
+        base_name = Path(file.filename).stem
+        out_ext = '.png' if ext == '.png' else '.jpg'
+        output_filename = f"cropped_{base_name}{out_ext}"
+        
+        return send_file(
+            img_buffer,
+            mimetype=mimetype,
+            as_attachment=True,
+            download_name=output_filename
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route('/cropImageWithBounds', methods=['POST'])
+def crop_image_with_bounds():
+    """Crop a single image with custom bounds"""
+    file = request.files.get('file')
+    if not file:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    try:
+        # Get crop coordinates from request
+        data = request.form
+        x = int(data.get('x', 0))
+        y = int(data.get('y', 0))
+        width = int(data.get('width', 0))
+        height = int(data.get('height', 0))
+
+        # Save uploaded file temporarily
+        temp_input = os.path.join(tempfile.gettempdir(), secure_filename(file.filename))
+        file.save(temp_input)
+
+        try:
+            # Crop the image
+            cropper = ImageCropper(auto_detect=False)
+            output_path = cropper.crop_image(
+                temp_input,
+                crop_box=(x, y, width, height)
+            )
+
+            # Read and return the cropped image
+            with open(output_path, 'rb') as f:
+                img_data = f.read()
+
+            # Cleanup
+            os.remove(temp_input)
+            os.remove(output_path)
+
+            return send_file(
+                BytesIO(img_data),
+                mimetype='image/jpeg',
+                as_attachment=True,
+                download_name=f"cropped_{file.filename}"
+            )
+        finally:
+            if os.path.exists(temp_input):
+                os.remove(temp_input)
+
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
