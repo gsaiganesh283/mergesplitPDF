@@ -535,5 +535,92 @@ def crop_image_with_bounds():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
+@app.route('/rotateCroppedImage', methods=['POST'])
+def rotate_cropped_image():
+    """Crop an image and then rotate it by the specified angle, return preview + download-ready image"""
+    file = request.files.get('file')
+    if not file:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    try:
+        from PIL import Image as PILImage
+        
+        angle = int(request.form.get('angle', 0))  # rotation angle in degrees (90, 180, 270, -90, etc.)
+        
+        # Read image
+        img_bytes = file.read()
+        original_image = PILImage.open(BytesIO(img_bytes))
+        
+        # Auto-detect crop bounds
+        cropper = ImageCropper(auto_detect=True, margin=2, auto_rotate=True)
+        cropped_img = cropper.auto_orient_image(original_image.copy())
+        x, y, w, h = cropper.detect_content_bounds(cropped_img.copy())
+        
+        # Crop the image
+        crop_area = (x, y, x + w, y + h)
+        cropped_image = cropped_img.crop(crop_area)
+        
+        # Apply user-requested rotation
+        if angle != 0:
+            cropped_image = cropped_image.rotate(-angle, expand=True, fillcolor='white')
+        
+        # Convert to RGB if needed
+        if cropped_image.mode in ('RGBA', 'LA', 'P'):
+            background = PILImage.new('RGB', cropped_image.size, (255, 255, 255))
+            if cropped_image.mode == 'RGBA':
+                background.paste(cropped_image, mask=cropped_image.split()[-1])
+            else:
+                background.paste(cropped_image)
+            cropped_image = background
+        elif cropped_image.mode != 'RGB':
+            cropped_image = cropped_image.convert('RGB')
+        
+        cropped_width, cropped_height = cropped_image.size
+        
+        # Check if caller wants preview (JSON) or download (file)
+        want_preview = request.form.get('preview', 'false').lower() == 'true'
+        
+        if want_preview:
+            # Return preview as base64
+            thumb = cropped_image.copy()
+            thumb.thumbnail((200, 200), PILImage.Resampling.LANCZOS)
+            thumb_buffer = BytesIO()
+            thumb.save(thumb_buffer, format='JPEG', quality=70)
+            thumb_buffer.seek(0)
+            thumb_base64 = base64.b64encode(thumb_buffer.getvalue()).decode('utf-8')
+            
+            return jsonify({
+                'success': True,
+                'croppedPreview': f'data:image/jpeg;base64,{thumb_base64}',
+                'croppedWidth': cropped_width,
+                'croppedHeight': cropped_height,
+                'angle': angle
+            })
+        else:
+            # Return as downloadable file
+            img_buffer = BytesIO()
+            ext = Path(file.filename).suffix.lower()
+            if ext in ['.png']:
+                cropped_image.save(img_buffer, format='PNG')
+                mimetype = 'image/png'
+            else:
+                cropped_image.save(img_buffer, format='JPEG', quality=95)
+                mimetype = 'image/jpeg'
+            img_buffer.seek(0)
+            
+            base_name = Path(file.filename).stem
+            out_ext = '.png' if ext == '.png' else '.jpg'
+            output_filename = f"cropped_{base_name}{out_ext}"
+            
+            return send_file(
+                img_buffer,
+                mimetype=mimetype,
+                as_attachment=True,
+                download_name=output_filename
+            )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)

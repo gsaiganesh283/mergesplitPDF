@@ -18,21 +18,150 @@ from io import BytesIO
 class ImageCropper:
     """Handles image cropping operations with automatic border detection using CV"""
     
-    def __init__(self, auto_detect: bool = True, margin: int = 5):
+    def __init__(self, auto_detect: bool = True, margin: int = 5, auto_rotate: bool = True):
         """
         Initialize the ImageCropper
         
         Args:
             auto_detect: Whether to automatically detect and crop borders
             margin: Extra margin to keep around detected content (in pixels)
+            auto_rotate: Whether to automatically rotate images based on EXIF and document skew
         """
         self.auto_detect = auto_detect
         self.margin = margin
+        self.auto_rotate = auto_rotate
+    
+    def correct_exif_orientation(self, image: Image.Image) -> Image.Image:
+        """
+        Correct image orientation based on EXIF data
+        
+        Args:
+            image: PIL Image object
+        
+        Returns:
+            Properly oriented image
+        """
+        try:
+            # Try to use ImageOps.exif_transpose (recommended way)
+            return ImageOps.exif_transpose(image)
+        except Exception:
+            return image
+    
+    def detect_document_rotation(self, image: Image.Image) -> float:
+        """
+        Detect small document skew angle using Hough line transform.
+        Only corrects minor skew (up to 10 degrees), never rotates 90 degrees.
+        
+        Args:
+            image: PIL Image object
+        
+        Returns:
+            Rotation angle in degrees (positive = counterclockwise), max ±10°
+        """
+        try:
+            # Convert to OpenCV format
+            if image.mode == 'RGBA':
+                background = Image.new('RGB', image.size, (255, 255, 255))
+                background.paste(image, mask=image.split()[-1])
+                image = background
+            elif image.mode != 'RGB':
+                image = image.convert('RGB')
+            
+            img_array = np.array(image)
+            img_cv = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+            
+            # Convert to grayscale
+            gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+            
+            # Edge detection
+            edges = cv2.Canny(gray, 50, 150, apertureSize=3)
+            
+            # Use Hough line transform to detect lines
+            lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=100, 
+                                     minLineLength=min(gray.shape) // 4, maxLineGap=10)
+            
+            if lines is None or len(lines) == 0:
+                return 0
+            
+            # Collect angles of detected lines — only near-horizontal or near-vertical
+            angles = []
+            for line in lines:
+                x1, y1, x2, y2 = line[0]
+                if x2 - x1 == 0:
+                    continue
+                angle = np.degrees(np.arctan2(y2 - y1, x2 - x1))
+                
+                # Only consider near-horizontal lines (within ±15° of 0 or 180)
+                if abs(angle) < 15:
+                    angles.append(angle)
+                elif abs(angle - 180) < 15:
+                    angles.append(angle - 180)
+                elif abs(angle + 180) < 15:
+                    angles.append(angle + 180)
+            
+            if not angles:
+                return 0
+            
+            # Get median angle (robust against outliers)
+            median_angle = np.median(angles)
+            
+            # Only correct small skew — cap at ±10 degrees to prevent major rotation
+            if abs(median_angle) > 10:
+                return 0
+            
+            # Only rotate if skew is noticeable (> 1 degree)
+            if abs(median_angle) > 1:
+                return -median_angle  # negate to correct the skew
+            
+            return 0
+        
+        except Exception:
+            return 0
+    
+    def rotate_image(self, image: Image.Image, angle: float) -> Image.Image:
+        """
+        Rotate image by specified angle
+        
+        Args:
+            image: PIL Image object
+            angle: Rotation angle in degrees (positive = counterclockwise)
+        
+        Returns:
+            Rotated image
+        """
+        if abs(angle) < 0.5:
+            return image
+        
+        # Rotate using PIL (expand=True to avoid cropping)
+        return image.rotate(angle, expand=True, fillcolor='white')
+    
+    def auto_orient_image(self, image: Image.Image) -> Image.Image:
+        """
+        Automatically orient and straighten image using EXIF data and document skew detection
+        
+        Args:
+            image: PIL Image object
+        
+        Returns:
+            Properly oriented image
+        """
+        if not self.auto_rotate:
+            return image
+        
+        # Step 1: Correct EXIF orientation
+        image = self.correct_exif_orientation(image)
+        
+        # Step 2: Detect and correct document skew
+        rotation_angle = self.detect_document_rotation(image)
+        if abs(rotation_angle) > 0.5:
+            image = self.rotate_image(image, rotation_angle)
+        
+        return image
     
     def detect_content_bounds(self, image: Image.Image) -> Tuple[int, int, int, int]:
         """
         Detect the bounds of a document in an image by finding where the 
-        colorful/patterned background ends and the document begins.
+        background ends and the actual content begins. Uses multiple detection methods.
         
         Returns:
             Tuple of (x, y, width, height)
@@ -50,13 +179,24 @@ class ImageCropper:
             img_cv = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
             height, width = img_cv.shape[:2]
             
-            # Primary method: Find document by detecting where colorful background ends
-            bounds = self._find_document_by_color_transition(img_cv)
+            # Try multiple detection methods
+            bounds = None
+            
+            # Method 1: Edge-based detection (most accurate for removing backgrounds)
+            bounds = self._find_content_by_edges(img_cv)
+            
+            # Method 2: Color transition detection
+            if not bounds:
+                bounds = self._find_document_by_color_transition(img_cv)
+            
+            # Method 3: Fallback to light region detection
+            if not bounds:
+                bounds = self._find_largest_light_region(img_cv)
             
             if bounds:
                 x, y, w, h = bounds
-                # Validate bounds - must keep at least 30% of image
-                if (w * h) >= (width * height * 0.3):
+                # Validate bounds - must keep at least 20% of image (more lenient)
+                if (w * h) >= (width * height * 0.2):
                     # Apply margin
                     x = max(0, x - self.margin)
                     y = max(0, y - self.margin)
@@ -69,6 +209,39 @@ class ImageCropper:
             
         except Exception as e:
             return 0, 0, image.width, image.height
+    
+    def _find_content_by_edges(self, img_cv) -> Optional[Tuple[int, int, int, int]]:
+        """
+        Find content boundaries using edge detection. Most effective for removing
+        backgrounds with different colors or patterns.
+        """
+        height, width = img_cv.shape[:2]
+        
+        # Convert to grayscale
+        gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+        
+        # Use Canny edge detection for strong edges
+        edges = cv2.Canny(gray, 50, 150)
+        
+        # Dilate edges to connect nearby edge pixels
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+        edges = cv2.dilate(edges, kernel, iterations=2)
+        
+        # Find contours from edges
+        contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        if not contours:
+            return None
+        
+        # Find largest contour
+        largest = max(contours, key=cv2.contourArea)
+        x, y, w, h = cv2.boundingRect(largest)
+        
+        # Require minimum size
+        if (w * h) >= (width * height * 0.15):
+            return (x, y, w, h)
+        
+        return None
     
     def _find_document_by_color_transition(self, img_cv) -> Optional[Tuple[int, int, int, int]]:
         """
@@ -137,19 +310,20 @@ class ImageCropper:
         return self._find_largest_light_region(img_cv)
     
     def _find_largest_light_region(self, img_cv) -> Optional[Tuple[int, int, int, int]]:
-        """Find the largest light/white region which is likely the document."""
+        """Find the largest content region using adaptive techniques."""
         height, width = img_cv.shape[:2]
         
         # Convert to grayscale
         gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
         
-        # Threshold to find bright areas
-        _, thresh = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
+        # Use adaptive thresholding for better results with varying lighting
+        thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                                       cv2.THRESH_BINARY_INV, 11, 2)
         
-        # Clean up
-        kernel = np.ones((10, 10), np.uint8)
-        thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=3)
-        thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
+        # Clean up with morphological operations
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 10))
+        thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=2)
+        thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=1)
         
         # Find contours
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -157,12 +331,12 @@ class ImageCropper:
         if not contours:
             return None
         
-        # Find largest contour
+        # Find largest contour by area
         largest = max(contours, key=cv2.contourArea)
         x, y, w, h = cv2.boundingRect(largest)
         
-        # Must be at least 30% of image
-        if (w * h) >= (width * height * 0.3):
+        # Must be at least 15% of image
+        if (w * h) >= (width * height * 0.15):
             return (x, y, w, h)
         
         return None
@@ -185,6 +359,9 @@ class ImageCropper:
             image = Image.open(image_path)
         except Exception as e:
             raise ValueError(f"Could not read image: {image_path} - {str(e)}")
+        
+        # Auto-orient image (EXIF + skew correction)
+        image = self.auto_orient_image(image)
         
         # Determine crop box
         if crop_box is None and self.auto_detect:
@@ -322,7 +499,7 @@ def crop_uploaded_images(files_list: List, output_format: str = 'zip') -> Tuple[
     Returns:
         Tuple of (file_bytes, filename)
     """
-    cropper = ImageCropper(auto_detect=True, margin=2)
+    cropper = ImageCropper(auto_detect=True, margin=2, auto_rotate=True)
     
     # Create temp folder for uploaded images
     temp_input = os.path.join(tempfile.gettempdir(), 'uploaded_images_temp')

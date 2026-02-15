@@ -2528,6 +2528,7 @@
 
         // ===================== Crop Images Functions =====================
         let cropImagesFiles = [];
+        let cropRotationAngles = {};  // Track rotation angle per image index
 
         function initCropImages() {
             console.log('Initializing Crop Images...');
@@ -2696,7 +2697,13 @@
                             <div style="font-size: 0.8em; color: #4caf50; margin-top: 8px;">${file.croppedWidth} × ${file.croppedHeight}px</div>
                         </div>
                     </div>
-                    <div style="padding: 12px; background: #f8f9fa; text-align: center;">
+                    <div style="padding: 12px; background: #f8f9fa; text-align: center; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;">
+                        <button onclick="rotateCroppedImage(${index}, -90)" title="Rotate Left 90°" style="background: #f0f0f0; border: 1px solid #ccc; padding: 8px 14px; border-radius: 20px; cursor: pointer; font-size: 1em; transition: background 0.2s;" onmouseover="this.style.background='#e0e0e0'" onmouseout="this.style.background='#f0f0f0'">
+                            ↺ Rotate Left
+                        </button>
+                        <button onclick="rotateCroppedImage(${index}, 90)" title="Rotate Right 90°" style="background: #f0f0f0; border: 1px solid #ccc; padding: 8px 14px; border-radius: 20px; cursor: pointer; font-size: 1em; transition: background 0.2s;" onmouseover="this.style.background='#e0e0e0'" onmouseout="this.style.background='#f0f0f0'">
+                            ↻ Rotate Right
+                        </button>
                         <button onclick="downloadSingleCroppedImage(${index})" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-size: 0.9em;">
                             ⬇️ Download This Image
                         </button>
@@ -2704,6 +2711,54 @@
                 `;
                 grid.appendChild(div);
             });
+        }
+
+        async function rotateCroppedImage(index, degrees) {
+            // Update cumulative rotation for this image
+            if (!cropRotationAngles[index]) cropRotationAngles[index] = 0;
+            cropRotationAngles[index] = (cropRotationAngles[index] + degrees) % 360;
+            if (cropRotationAngles[index] < 0) cropRotationAngles[index] += 360;
+            const totalAngle = cropRotationAngles[index];
+
+            const statusDiv = document.getElementById('cropImagesStatus');
+            statusDiv.textContent = `⏳ Rotating image ${index + 1}...`;
+            statusDiv.style.color = '#666';
+
+            const file = cropImagesFiles[index];
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('angle', totalAngle);
+            formData.append('preview', 'true');
+
+            try {
+                const response = await fetch('/rotateCroppedImage', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    // Update the cropped preview image and dimensions
+                    const grid = document.getElementById('cropImagesGrid');
+                    const card = grid.children[index];
+                    if (card) {
+                        const croppedDiv = card.querySelector('div:nth-child(2) > div:nth-child(2)');
+                        if (croppedDiv) {
+                            const img = croppedDiv.querySelector('img');
+                            const sizeText = croppedDiv.querySelector('div:last-child');
+                            if (img) img.src = data.croppedPreview;
+                            if (sizeText) sizeText.textContent = `${data.croppedWidth} × ${data.croppedHeight}px`;
+                        }
+                    }
+                    statusDiv.textContent = `✅ Rotated ${totalAngle}°`;
+                    statusDiv.style.color = '#4caf50';
+                } else {
+                    throw new Error(data.error || 'Rotation failed');
+                }
+            } catch (error) {
+                statusDiv.textContent = '❌ Error: ' + error.message;
+                statusDiv.style.color = '#f44336';
+            }
         }
 
         async function downloadSingleCroppedImage(index) {
@@ -2714,9 +2769,18 @@
             const file = cropImagesFiles[index];
             const formData = new FormData();
             formData.append('file', file);
+            
+            // If image was rotated, use the rotate endpoint for download
+            const angle = cropRotationAngles[index] || 0;
+            if (angle !== 0) {
+                formData.append('angle', angle);
+                formData.append('preview', 'false');
+            }
+
+            const endpoint = angle !== 0 ? '/rotateCroppedImage' : '/cropSingleImage';
 
             try {
-                const response = await fetch('/cropSingleImage', {
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     body: formData
                 });
@@ -2817,6 +2881,7 @@
 
         function clearCropImages() {
             cropImagesFiles = [];
+            cropRotationAngles = {};
             document.getElementById('cropImagesGrid').innerHTML = '';
             document.getElementById('cropImagesPreviewContainer').style.display = 'none';
             document.getElementById('cropDownloadOptions').style.display = 'none';
